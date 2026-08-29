@@ -1,0 +1,20 @@
+# Go build output
+*.exe
+*.out
+*.test
+
+# PCAP captures
+*.pcap
+*.pcapng
+
+# Environment / secrets
+.env
+.env.*
+
+# IDE / editor
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
