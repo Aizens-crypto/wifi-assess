@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	"wifi-assess/internal/capture"
+	"wifi-assess/internal/discovery"
 	"wifi-assess/internal/wifi"
 )
 
@@ -29,6 +30,7 @@ func main() {
 	packetCount := 0
 	skipped := 0
 	frameCounts := make(map[string]int)
+	tracker := discovery.NewTracker()
 
 	for {
 		pkt, err := source.ReadPacket()
@@ -51,6 +53,7 @@ func main() {
 		}
 
 		frameCounts[parsed.FrameType]++
+		tracker.Observe(parsed)
 	}
 
 	fmt.Println("WiFi-Assess")
@@ -69,5 +72,41 @@ func main() {
 
 	for _, t := range types {
 		fmt.Printf("  %-30s %d\n", t, frameCounts[t])
+	}
+
+	aps := tracker.AccessPoints()
+	sort.Slice(aps, func(i, j int) bool { return aps[i].BSSID < aps[j].BSSID })
+
+	fmt.Println()
+	fmt.Printf("Access points (%d):\n", len(aps))
+	for _, ap := range aps {
+		privacy := "unknown"
+		if ap.HasCapabilityInfo {
+			if ap.PrivacyEnabled {
+				privacy = "encrypted"
+			} else {
+				privacy = "open"
+			}
+		}
+		ssid := ap.SSID
+		if ssid == "" {
+			ssid = "<hidden/unknown>"
+		}
+		fmt.Printf("  %-17s  ch=%-3d  %-9s  beacons=%-5d probe_resp=%-5d  %s\n",
+			ap.BSSID, ap.Channel, privacy, ap.BeaconCount, ap.ProbeResponseCount, ssid)
+	}
+
+	clients := tracker.Clients()
+	sort.Slice(clients, func(i, j int) bool { return clients[i].MAC < clients[j].MAC })
+
+	fmt.Println()
+	fmt.Printf("Clients (%d):\n", len(clients))
+	for _, c := range clients {
+		assoc := c.AssociatedBSSID
+		if assoc == "" {
+			assoc = "-"
+		}
+		fmt.Printf("  %-17s  probes=%-5d  assoc=%s  probed_ssids=%v\n",
+			c.MAC, c.ProbeRequestCount, assoc, c.ProbedSSIDs)
 	}
 }
